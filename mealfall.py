@@ -4,7 +4,7 @@ pygame.init()
 
 player_size = 80
 font_size = 32
-food_size = 20
+food_size = 45
 font = pygame.freetype.SysFont(pygame.freetype.get_default_font(), font_size)
 ADD_FOOD = pygame.USEREVENT + 1
 
@@ -16,6 +16,9 @@ class Mealfall:
         pygame.display.set_caption("Mealfall")
         self.clock = pygame.time.Clock()
         self.player = pygame.Vector2(width / 2, height - player_size)
+        self.player_img = pygame.image.load("player_sprite.png").convert_alpha()
+        self.food_img = pygame.image.load("food.png").convert_alpha()
+        self.yuck_img = pygame.image.load("yuck.png").convert_alpha()
         self.running = True
         self.reset() # Run this to initialize the rest of the variables.
     
@@ -65,11 +68,23 @@ class Mealfall:
         )
 
     def draw_yuck(self, yuck):
-        pygame.draw.circle(self.screen, "red", yuck, food_size)
+        self.screen.blit(
+            self.yuck_img, yuck
+        )
 
     def draw_food(self, food):
-        pygame.draw.circle(self.screen, "green", food, food_size)
+        self.screen.blit(
+            self.food_img, food
+        )
     
+    def draw_player(self):
+        self.screen.blit(
+            self.player_img, (self.player.x, self.player.y)
+        )
+        return pygame.Rect(
+            self.player.x, self.player.y, player_size, player_size
+        )
+
     def pre_processing_input(self):
         # poll for events
         # pygame.QUIT event means the user clicked X to close your window
@@ -94,16 +109,19 @@ class Mealfall:
         if result > self.width - player_size:
             result = self.width - player_size
         return result
-    
-    def draw_player(self):
-        return pygame.draw.rect(
-            self.screen, "red",
-            pygame.Rect(
-                self.player.x, self.player.y, player_size, player_size
-            )
-        )
-    
-    def process_food(self):
+
+    def step(self):
+        # Basic pre-processing of input
+        if self.pre_processing_input() != True:
+            return False
+
+        # fill the screen with a color to wipe away anything from last frame
+        self.screen.fill("#ccfeff")
+
+        # Process player input and draw player rectangle
+        self.player.x = self.get_input_as_pos()
+        player_rect = self.draw_player()
+
         # Process any food
         i = -1
         for food in self.foods:
@@ -124,8 +142,7 @@ class Mealfall:
                 self.misses += 1
                 del self.foods[i]
                 continue
-    
-    def process_yuck(self):
+
         # Process any yucks (bad food)
         for yuck in self.yucks:
             # Make item fall down
@@ -136,21 +153,6 @@ class Mealfall:
             # Then game over. Otherwise, draw it.
             if player_rect.collidepoint(yuck.x, yuck.y):
                 return False
-
-    def step(self):
-        # Basic pre-processing of input
-        if self.pre_processing_input() != True:
-            return False
-
-        # fill the screen with a color to wipe away anything from last frame
-        self.screen.fill("#ccfeff")
-
-        # Process player input and draw player rectangle
-        self.player.x = self.get_input_as_pos()
-        player_rect = self.draw_player()
-
-        self.process_food()
-        self.process_yuck()
 
         # Draw score and misses.
         self.text("Score: {0}".format(self.food_dropped - self.misses))
